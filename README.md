@@ -17,7 +17,7 @@ php glueful extensions:enable flags
 php glueful migrate:run
 ```
 
-Requires `glueful/framework >=1.54.0`. The migration creates three tables:
+Requires `glueful/framework >=1.55.0`. The migration creates three tables:
 `feature_flags`, `feature_flag_rules`, and `feature_flag_audits`.
 
 ## Checking a flag
@@ -122,19 +122,19 @@ Percentage rules are deterministic and stable:
 
 | Key | Default | Used for |
 | --- | --- | --- |
-| `enabled` | `true` | Reserved. Not currently read by any code path. |
 | `default` | `false` | Result for a flag that does not exist in the DB. |
-| `cache_ttl` | `60` | Reserved. The current cache is per-request and has no TTL. |
 | `environment` | `env('APP_ENV', 'production')` | Default environment for the HTTP evaluate endpoint when the payload omits one. |
 | `routes_enabled` | `true` | Set `false` to skip registering the `/flags` HTTP routes. |
+
+Every key in the file is read by a code path; there are no reserved keys.
 
 ## Caching
 
 Flag definitions are memoized **per request, in process**, keyed by flag key
 and environment (negative lookups included). Manager writes (update, archive,
 rule add/remove) clear the affected flag's entries. There is no shared cache
-backend and no TTL-based caching yet -- `cache_ttl` is reserved for when there
-is.
+backend and no TTL-based caching yet; a config key for a TTL will be added
+when a shared backend exists.
 
 ## Management API
 
@@ -149,13 +149,43 @@ guard (see Permissions). Set `flags.routes_enabled = false` to turn them off.
 | PATCH | `/flags/{key}` | `flags.manage` | Update name/description/enabled/default_value/status |
 | DELETE | `/flags/{key}` | `flags.manage` | Archive (soft delete: `status=archived`, `enabled=false`) |
 | POST | `/flags/{key}/rules` | `flags.manage` | Add a rule |
-| DELETE | `/flags/{key}/rules/{uuid}` | `flags.manage` | Soft-remove a rule (sets `enabled=false`) |
+| DELETE | `/flags/{key}/rules/{uuid}` | `flags.manage` | Soft-remove a rule (sets `enabled=false`; 404 for an unknown or already-removed rule) |
 | POST | `/flags/{key}/evaluate` | `flags.evaluate` | Evaluate the flag for a supplied context |
 
 Archive and rule removal are soft operations; rows are kept for audit history.
-There is no dedicated validation layer yet: a structurally invalid payload
-(missing `key`/`type`, invalid `status`) or an unknown flag key on a write
-surfaces as a 500 from the framework's exception handler, not a 422.
+
+### Validation and error responses
+
+Write payloads pass through `FlagPayloadValidator` before they touch the
+database: `key` is required on create ([a-z0-9._-], 1-160 chars, unique) and
+immutable on update; `status` must be `active|archived`; `enabled` and
+`default_value` must be booleans; rule `type` must be one of the seven rule
+types; `operator` must be `in|not_in`; `percentage` must be an integer 0-100
+(required for percentage rules); `subject` must be `user|tenant|custom`
+(`custom` requires `value.attribute`); `attribute` rules require `value.key`.
+Updates only pass whitelisted fields through, so unknown payload fields are
+dropped.
+
+A validation failure returns the framework's **422** error envelope, with the
+message under `error.details.flag` (or `error.details.rule` for rule
+payloads):
+
+```json
+{
+    "success": false,
+    "message": "Validation failed",
+    "error": {
+        "code": 422,
+        "details": { "flag": "status must be one of: active, archived." },
+        "timestamp": "...",
+        "request_id": "..."
+    }
+}
+```
+
+An unknown flag key on show/update/archive/rule writes, and an unknown (or
+already-removed) rule UUID on rule removal, return the framework's **404**
+envelope (same shape, `code: 404`, no `details`).
 
 ## CLI
 
@@ -195,12 +225,14 @@ available) from `Glueful\Extensions\Flags\Events`:
 | `FlagEnabled` | update flipped `enabled` to `true` |
 | `FlagDisabled` | update flipped `enabled` to `false` |
 | `FlagRuleAdded` | rule added |
-| `FlagRuleRemoved` | rule removed |
+| `FlagRuleRemoved` | rule removed (including soft-removal via the API) |
 
 Every manager write also records a row in `feature_flag_audits`
-(`created`, `updated`, `rule_added`, `rule_removed`). The audit table has
-before/after JSON columns; the manager currently records the flag key or rule
-UUID involved, not full definition snapshots.
+(`created`, `updated`, `rule_added`, `rule_removed`). The `before`/`after`
+JSON columns carry **full snapshots**: flag writes store the complete flag
+field set (including its enabled rules), and rule writes store the complete
+rule field set, so the audit trail can reconstruct any change without
+consulting the live tables.
 
 ## Flags vs entitlements
 

@@ -8,7 +8,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 First release. **Feature flags and rollout controls** for Glueful: flag definitions with
 targeting rules and deterministic percentage rollouts, evaluated through an extension-owned
-checker contract. Requires `glueful/framework >=1.54.0`.
+checker contract. Requires `glueful/framework >=1.55.0`.
 
 ### Added
 
@@ -39,14 +39,23 @@ checker contract. Requires `glueful/framework >=1.54.0`.
   request attributes).
 - **`FeatureFlagManager`:** evaluate (`enabled`), `get`, `create`, `update`, `addRule`,
   `removeRule`; writes invalidate the affected flag's cache entries and record
-  `feature_flag_audits` rows. Archive and rule removal are soft (status flip / rule
-  disable); rows are kept for history.
+  `feature_flag_audits` rows whose `before`/`after` columns carry **full flag/rule
+  snapshots**. Archive and rule removal are soft (status flip / rule disable); rows are
+  kept for history. Unknown flag keys raise `FlagNotFoundException` and unknown or
+  already-removed rule UUIDs raise `RuleNotFoundException`; rule removal dispatches
+  `FlagRuleRemoved` and records a `rule_removed` audit row.
+- **`FlagPayloadValidator`:** structural validation for create/update/rule payloads
+  (key charset/length and uniqueness, immutable key on update, status and rule-type
+  whitelists, boolean toggles, percentage 0-100, subject whitelist, attribute/custom
+  value shapes); update payloads are whitelisted so unknown fields are dropped.
 - **Per-request definition cache** (`FeatureFlagCache`): in-process memoization keyed by
   flag key and environment, including negative lookups; cleared per flag on manager
-  writes. No shared backend or TTL yet -- the `flags.cache_ttl` config key is reserved.
+  writes. No shared backend or TTL yet.
 - **Management HTTP API** under `/flags` (toggle with `flags.routes_enabled`): list,
   create, show, update, archive, add rule, remove rule, and evaluate -- all behind `auth`
-  plus the permission guard, with OpenAPI route annotations.
+  plus the permission guard, with OpenAPI route annotations. Invalid payloads return the
+  framework's 422 validation envelope (`error.details.flag` / `error.details.rule`);
+  unknown flag keys and unknown or already-removed rule UUIDs return 404.
 - **Permission guard:** `flags_permission` route middleware (`RequireFlagsPermission`)
   calling `PermissionManager::can()` fail-closed (no user, no manager, or denial returns
   403), and catalog registration of the `flags.view`, `flags.manage`, and
@@ -57,5 +66,7 @@ checker contract. Requires `glueful/framework >=1.54.0`.
   `FlagCreated`, `FlagUpdated`, `FlagEnabled`, `FlagDisabled`, `FlagRuleAdded`,
   `FlagRuleRemoved`.
 - **Config** (`config/flags.php`): `default` (missing-flag result), `environment`
-  (default for the HTTP evaluate endpoint), `routes_enabled`, plus reserved `enabled`
-  and `cache_ttl` keys.
+  (default for the HTTP evaluate endpoint), and `routes_enabled`. Every key is read by
+  a code path; there are no reserved keys.
+- **Provider version** derives from composer.json's `extra.glueful.version` (cached
+  static read); no hardcoded version string in the provider.
