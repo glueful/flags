@@ -21,11 +21,12 @@ final class DatabaseFeatureFlagChecker implements FeatureFlagCheckerInterface
 
     public function enabled(string $flag, FlagContext $context): bool
     {
-        $definition = $this->cache->get($flag, $context->environment);
-        if ($definition === null) {
+        if (!$this->cache->has($flag, $context->environment)) {
             $definition = $this->flags->find($flag);
             $this->cache->put($flag, $context->environment, $definition);
         }
+
+        $definition = $this->cache->get($flag, $context->environment);
 
         return $this->evaluator->evaluate(
             $definition,

@@ -75,6 +75,17 @@ abstract class FlagsTestCase extends TestCase
         $this->bindings[$id] = $service;
     }
 
+    protected function setConfig(string $key, mixed $value): void
+    {
+        $parts = explode('.', $key);
+        $root = array_shift($parts);
+        $nested = $value;
+        foreach (array_reverse($parts) as $part) {
+            $nested = [$part => $nested];
+        }
+        $this->context->mergeConfigDefaults((string) $root, $nested);
+    }
+
     /** @param array<string,mixed> $overrides */
     protected function seedFlag(array $overrides = []): array
     {

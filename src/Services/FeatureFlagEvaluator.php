@@ -16,8 +16,12 @@ final class FeatureFlagEvaluator
 
     public function evaluate(?FeatureFlag $flag, FlagContext $context, bool $missingDefault = false): bool
     {
-        if ($flag === null || $flag->status !== 'active') {
+        if ($flag === null) {
             return $missingDefault;
+        }
+
+        if ($flag->status !== 'active') {
+            return false;
         }
 
         if (!$flag->enabled) {

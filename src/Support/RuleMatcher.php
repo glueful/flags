@@ -69,7 +69,7 @@ final class RuleMatcher
             return false;
         }
 
-        $bucket = hexdec(substr(hash('sha256', $flagKey . ':' . $subjectKey), 0, 8)) % 100;
+        $bucket = hexdec(substr(hash('sha256', $flagKey . $subjectKey), 0, 8)) % 100;
 
         return $bucket < max(0, min(100, $rule->percentage));
     }

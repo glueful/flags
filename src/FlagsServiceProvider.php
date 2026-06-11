@@ -43,13 +43,15 @@ final class FlagsServiceProvider extends ServiceProvider
             FeatureFlagEvaluator::class => self::autowired(FeatureFlagEvaluator::class),
             FeatureFlagCache::class => self::autowired(FeatureFlagCache::class),
             FlagContextFactory::class => self::autowired(FlagContextFactory::class),
-            DatabaseFeatureFlagChecker::class => self::autowired(DatabaseFeatureFlagChecker::class),
-            FeatureFlagCheckerInterface::class => ['alias' => DatabaseFeatureFlagChecker::class],
+            DatabaseFeatureFlagChecker::class => self::autowired(
+                DatabaseFeatureFlagChecker::class,
+                aliases: [FeatureFlagCheckerInterface::class]
+            ),
             FeatureFlagManager::class => [
                 'factory' => [self::class, 'makeFeatureFlagManager'],
                 'shared' => true,
+                'alias' => [FeatureFlagManagerInterface::class],
             ],
-            FeatureFlagManagerInterface::class => ['alias' => FeatureFlagManager::class],
             RequireFlagsPermission::class => [
                 'class' => RequireFlagsPermission::class,
                 'shared' => true,
@@ -75,14 +77,23 @@ final class FlagsServiceProvider extends ServiceProvider
             $c->get(FeatureFlagAuditRepository::class),
             $c->get(FeatureFlagEvaluator::class),
             $c->get(FeatureFlagCache::class),
+            $c->get(ApplicationContext::class),
             $c->has(EventService::class) ? $c->get(EventService::class) : null,
         );
     }
 
-    /** @return array{class:class-string,shared:bool,autowire:bool} */
-    private static function autowired(string $class, bool $shared = true): array
+    /**
+     * @param list<string> $aliases
+     * @return array{class:class-string,shared:bool,autowire:bool,alias?:list<string>}
+     */
+    private static function autowired(string $class, bool $shared = true, array $aliases = []): array
     {
-        return ['class' => $class, 'shared' => $shared, 'autowire' => true];
+        $definition = ['class' => $class, 'shared' => $shared, 'autowire' => true];
+        if ($aliases !== []) {
+            $definition['alias'] = $aliases;
+        }
+
+        return $definition;
     }
 
     public function getName(): string

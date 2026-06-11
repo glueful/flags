@@ -36,4 +36,11 @@ final class FeatureFlagEvaluatorTest extends TestCase
 
         self::assertSame($evaluator->evaluate($flag, $context), $evaluator->evaluate($flag, $context));
     }
+
+    public function testArchivedFlagsFailClosedEvenWhenMissingDefaultAllows(): void
+    {
+        $flag = new FeatureFlag('f1', 'flag', 'Flag', null, true, true, 'archived');
+
+        self::assertFalse((new FeatureFlagEvaluator())->evaluate($flag, new FlagContext(userUuid: 'user-1'), true));
+    }
 }

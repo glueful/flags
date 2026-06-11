@@ -11,6 +11,11 @@ final class FeatureFlagCache
     /** @var array<string,FeatureFlag|null> */
     private array $items = [];
 
+    public function has(string $key, ?string $environment): bool
+    {
+        return array_key_exists($this->key($key, $environment), $this->items);
+    }
+
     public function get(string $key, ?string $environment): ?FeatureFlag
     {
         return $this->items[$this->key($key, $environment)] ?? null;

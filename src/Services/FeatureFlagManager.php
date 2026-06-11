@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Glueful\Extensions\Flags\Services;
 
+use Glueful\Bootstrap\ApplicationContext;
 use Glueful\Events\EventService;
 use Glueful\Extensions\Flags\Contracts\FeatureFlagManagerInterface;
 use Glueful\Extensions\Flags\Events\FlagCreated;
@@ -25,13 +26,22 @@ final class FeatureFlagManager implements FeatureFlagManagerInterface
         private FeatureFlagAuditRepository $audits,
         private FeatureFlagEvaluator $evaluator,
         private FeatureFlagCache $cache,
+        private ApplicationContext $context,
         private ?EventService $events = null,
     ) {
     }
 
     public function enabled(string $flag, FlagContext $context): bool
     {
-        return $this->evaluator->evaluate($this->get($flag), $context);
+        if (!$this->cache->has($flag, $context->environment)) {
+            $this->cache->put($flag, $context->environment, $this->flags->find($flag));
+        }
+
+        return $this->evaluator->evaluate(
+            $this->cache->get($flag, $context->environment),
+            $context,
+            (bool) \config($this->context, 'flags.default', false)
+        );
     }
 
     public function get(string $flag): ?FeatureFlag
