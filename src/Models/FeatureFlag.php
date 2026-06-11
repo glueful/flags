@@ -19,4 +19,23 @@ final readonly class FeatureFlag
         public array $rules = [],
     ) {
     }
+
+    /** @return array<string,mixed> */
+    public function toArray(): array
+    {
+        return [
+            'uuid' => $this->uuid,
+            'key' => $this->key,
+            'name' => $this->name,
+            'description' => $this->description,
+            'enabled' => $this->enabled,
+            'default_value' => $this->defaultValue,
+            'status' => $this->status,
+            'created_by' => $this->createdBy,
+            'rules' => array_map(
+                static fn(FeatureFlagRule $rule): array => $rule->toArray(),
+                $this->rules
+            ),
+        ];
+    }
 }

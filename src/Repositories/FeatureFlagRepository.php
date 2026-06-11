@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Glueful\Extensions\Flags\Repositories;
 
 use Glueful\Database\Connection;
+use Glueful\Extensions\Flags\Exceptions\FlagNotFoundException;
 use Glueful\Extensions\Flags\Models\FeatureFlag;
 use Glueful\Extensions\Flags\Models\FeatureFlagRule;
 use Glueful\Helpers\Utils;
@@ -73,7 +74,7 @@ final class FeatureFlagRepository
         $this->connection->table('feature_flags')->where('key', '=', $key)->update($data);
         $flag = $this->find($key);
         if ($flag === null) {
-            throw new \RuntimeException(sprintf('Feature flag "%s" was not found.', $key));
+            throw FlagNotFoundException::forKey($key);
         }
 
         return $flag;
@@ -89,7 +90,7 @@ final class FeatureFlagRepository
     {
         $flag = $this->find($flagKey);
         if ($flag === null) {
-            throw new \RuntimeException(sprintf('Feature flag "%s" was not found.', $flagKey));
+            throw FlagNotFoundException::forKey($flagKey);
         }
 
         $now = $this->now();
@@ -115,7 +116,7 @@ final class FeatureFlagRepository
     {
         $flag = $this->find($flagKey);
         if ($flag === null) {
-            throw new \RuntimeException(sprintf('Feature flag "%s" was not found.', $flagKey));
+            throw FlagNotFoundException::forKey($flagKey);
         }
 
         $this->connection
@@ -123,6 +124,20 @@ final class FeatureFlagRepository
             ->where('flag_uuid', '=', $flag->uuid)
             ->where('uuid', '=', $ruleUuid)
             ->update(['enabled' => false, 'updated_at' => $this->now()]);
+    }
+
+    /**
+     * Finds a rule on a flag regardless of its enabled state.
+     */
+    public function findRule(string $flagUuid, string $ruleUuid): ?FeatureFlagRule
+    {
+        $row = $this->connection
+            ->table('feature_flag_rules')
+            ->where('flag_uuid', '=', $flagUuid)
+            ->where('uuid', '=', $ruleUuid)
+            ->first();
+
+        return $row === null ? null : $this->hydrateRule($row);
     }
 
     /** @return list<FeatureFlagRule> */

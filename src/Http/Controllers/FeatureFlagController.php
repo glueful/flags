@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Glueful\Extensions\Flags\Http\Controllers;
 
+use Glueful\Extensions\Flags\Exceptions\FlagNotFoundException;
 use Glueful\Extensions\Flags\Repositories\FeatureFlagRepository;
 use Glueful\Extensions\Flags\Services\FeatureFlagManager;
 use Glueful\Http\Response;
@@ -22,7 +23,14 @@ final class FeatureFlagController
 
     public function store(Request $request): Response
     {
-        return Response::created(['flag' => $this->manager->create($this->body($request))], 'Feature flag created.');
+        try {
+            return Response::created(
+                ['flag' => $this->manager->create($this->body($request))],
+                'Feature flag created.'
+            );
+        } catch (\InvalidArgumentException $e) {
+            return Response::validation(['flag' => $e->getMessage()]);
+        }
     }
 
     public function show(Request $request, string $key): Response
@@ -37,18 +45,28 @@ final class FeatureFlagController
 
     public function update(Request $request, string $key): Response
     {
-        return Response::success(
-            ['flag' => $this->manager->update($key, $this->body($request))],
-            'Feature flag updated.'
-        );
+        try {
+            return Response::success(
+                ['flag' => $this->manager->update($key, $this->body($request))],
+                'Feature flag updated.'
+            );
+        } catch (FlagNotFoundException) {
+            return Response::notFound('Feature flag not found.');
+        } catch (\InvalidArgumentException $e) {
+            return Response::validation(['flag' => $e->getMessage()]);
+        }
     }
 
     public function archive(Request $request, string $key): Response
     {
-        return Response::success(
-            ['flag' => $this->manager->update($key, ['status' => 'archived', 'enabled' => false])],
-            'Feature flag archived.'
-        );
+        try {
+            return Response::success(
+                ['flag' => $this->manager->update($key, ['status' => 'archived', 'enabled' => false])],
+                'Feature flag archived.'
+            );
+        } catch (FlagNotFoundException) {
+            return Response::notFound('Feature flag not found.');
+        }
     }
 
     /** @return array<string,mixed> */

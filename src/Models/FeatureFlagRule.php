@@ -18,4 +18,20 @@ final readonly class FeatureFlagRule
         public bool $enabled = true,
     ) {
     }
+
+    /** @return array<string,mixed> */
+    public function toArray(): array
+    {
+        return [
+            'uuid' => $this->uuid,
+            'flag_uuid' => $this->flagUuid,
+            'priority' => $this->priority,
+            'type' => $this->type,
+            'operator' => $this->operator,
+            'value' => $this->value,
+            'percentage' => $this->percentage,
+            'subject' => $this->subject,
+            'enabled' => $this->enabled,
+        ];
+    }
 }
