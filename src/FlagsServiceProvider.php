@@ -25,6 +25,7 @@ use Glueful\Extensions\Flags\Services\DatabaseFeatureFlagChecker;
 use Glueful\Extensions\Flags\Services\FeatureFlagCache;
 use Glueful\Extensions\Flags\Services\FeatureFlagEvaluator;
 use Glueful\Extensions\Flags\Services\FeatureFlagManager;
+use Glueful\Extensions\Flags\Services\FlagPayloadValidator;
 use Glueful\Extensions\Flags\Support\FlagContextFactory;
 use Glueful\Extensions\Flags\Support\RuleMatcher;
 use Glueful\Extensions\ServiceProvider;
@@ -33,12 +34,30 @@ use Psr\Container\ContainerInterface;
 
 final class FlagsServiceProvider extends ServiceProvider
 {
+    private static ?string $cachedVersion = null;
+
+    /**
+     * Reads the extension version from composer.json's extra.glueful.version (cached).
+     */
+    public static function composerVersion(): string
+    {
+        if (self::$cachedVersion === null) {
+            $raw = file_get_contents(__DIR__ . '/../composer.json');
+            $composer = is_string($raw) ? json_decode($raw, true) : null;
+            $version = is_array($composer) ? ($composer['extra']['glueful']['version'] ?? null) : null;
+            self::$cachedVersion = is_string($version) ? $version : '0.0.0';
+        }
+
+        return self::$cachedVersion;
+    }
+
     /** @return array<string,mixed> */
     public static function services(): array
     {
         return [
             FeatureFlagRepository::class => self::autowired(FeatureFlagRepository::class),
             FeatureFlagAuditRepository::class => self::autowired(FeatureFlagAuditRepository::class),
+            FlagPayloadValidator::class => self::autowired(FlagPayloadValidator::class),
             RuleMatcher::class => self::autowired(RuleMatcher::class),
             FeatureFlagEvaluator::class => self::autowired(FeatureFlagEvaluator::class),
             FeatureFlagCache::class => self::autowired(FeatureFlagCache::class),
@@ -79,6 +98,7 @@ final class FlagsServiceProvider extends ServiceProvider
             $c->get(FeatureFlagCache::class),
             $c->get(ApplicationContext::class),
             $c->has(EventService::class) ? $c->get(EventService::class) : null,
+            $c->has(FlagPayloadValidator::class) ? $c->get(FlagPayloadValidator::class) : null,
         );
     }
 
@@ -103,7 +123,7 @@ final class FlagsServiceProvider extends ServiceProvider
 
     public function getVersion(): string
     {
-        return '1.0.0';
+        return self::composerVersion();
     }
 
     public function getDescription(): string

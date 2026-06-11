@@ -29,7 +29,7 @@ $router->group(['prefix' => '/flags', 'middleware' => ['auth']], function (Route
      *   unless enabled and matched by a rule or its default_value is true.
      * @tag Flags
      * @requestBody
-     *   key:string="Unique flag key (max 160 chars)" {required=key}
+     *   key:string="Unique flag key ([a-z0-9._-], 1-160 chars)" {required=key}
      *   name:string="Display name (defaults to the key)"
      *   description:string="Optional description"
      *   enabled:boolean="Master switch (defaults to false)"
@@ -39,7 +39,7 @@ $router->group(['prefix' => '/flags', 'middleware' => ['auth']], function (Route
      * @response 201 application/json "Feature flag created"
      * @response 401 "Not authenticated"
      * @response 403 "Missing flags.manage permission"
-     * @response 500 "Invalid payload (missing key, invalid status, or duplicate key)"
+     * @response 422 "Validation failed (missing/invalid key, invalid status, non-boolean toggle, or duplicate key)"
      */
     $router->post('', [FeatureFlagController::class, 'store'])->middleware('flags_permission:flags.manage');
 
@@ -69,7 +69,8 @@ $router->group(['prefix' => '/flags', 'middleware' => ['auth']], function (Route
      * @response 200 application/json "Feature flag updated"
      * @response 401 "Not authenticated"
      * @response 403 "Missing flags.manage permission"
-     * @response 500 "Unknown flag key or invalid status"
+     * @response 404 "Feature flag not found"
+     * @response 422 "Validation failed (invalid status, non-boolean toggle, or attempt to change the key)"
      */
     $router->patch('/{key}', [FeatureFlagController::class, 'update'])->middleware('flags_permission:flags.manage');
 
@@ -83,7 +84,7 @@ $router->group(['prefix' => '/flags', 'middleware' => ['auth']], function (Route
      * @response 200 application/json "Feature flag archived"
      * @response 401 "Not authenticated"
      * @response 403 "Missing flags.manage permission"
-     * @response 500 "Unknown flag key"
+     * @response 404 "Feature flag not found"
      */
     $router->delete('/{key}', [FeatureFlagController::class, 'archive'])->middleware('flags_permission:flags.manage');
 
@@ -105,7 +106,8 @@ $router->group(['prefix' => '/flags', 'middleware' => ['auth']], function (Route
      * @response 201 application/json "Flag rule created"
      * @response 401 "Not authenticated"
      * @response 403 "Missing flags.manage permission"
-     * @response 500 "Unknown flag key or missing rule type"
+     * @response 404 "Feature flag not found"
+     * @response 422 "Validation failed (missing/unknown rule type, bad operator, percentage outside 0-100, or bad subject)"
      */
     $router->post('/{key}/rules', [FeatureFlagRuleController::class, 'store'])->middleware('flags_permission:flags.manage');
 
@@ -114,12 +116,14 @@ $router->group(['prefix' => '/flags', 'middleware' => ['auth']], function (Route
      * @summary Remove Flag Rule
      * @description
      *   Soft-removes a rule by disabling it (enabled=false); the row is kept for audit
-     *   history. Removing an unknown rule UUID on an existing flag is a no-op.
+     *   history. Removal dispatches FlagRuleRemoved and records a rule_removed audit row
+     *   with full before/after rule snapshots. An unknown or already-removed rule UUID
+     *   returns 404.
      * @tag Flags
      * @response 200 application/json "Flag rule removed"
      * @response 401 "Not authenticated"
      * @response 403 "Missing flags.manage permission"
-     * @response 500 "Unknown flag key"
+     * @response 404 "Feature flag or rule not found"
      */
     $router->delete('/{key}/rules/{uuid}', [FeatureFlagRuleController::class, 'delete'])
         ->middleware('flags_permission:flags.manage');

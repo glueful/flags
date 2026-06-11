@@ -43,6 +43,18 @@ final class ServiceProviderWiringTest extends FlagsTestCase
         self::assertArrayHasKey(RequireFlagsPermission::class, $definitions);
     }
 
+    public function testProviderVersionMatchesComposerManifest(): void
+    {
+        $raw = (string) file_get_contents(__DIR__ . '/../../composer.json');
+        $composer = json_decode($raw, true);
+        self::assertIsArray($composer);
+
+        $provider = new FlagsServiceProvider($this->appContext()->getContainer());
+
+        self::assertSame($composer['extra']['glueful']['version'], $provider->getVersion());
+        self::assertSame(FlagsServiceProvider::composerVersion(), $provider->getVersion());
+    }
+
     public function testAliasesResolveThroughRealContainer(): void
     {
         $definitions = (new DefaultServicesLoader())->load(
