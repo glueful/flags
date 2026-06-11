@@ -7,6 +7,8 @@ namespace Glueful\Extensions\Flags\Services;
 use Glueful\Events\EventService;
 use Glueful\Extensions\Flags\Contracts\FeatureFlagManagerInterface;
 use Glueful\Extensions\Flags\Events\FlagCreated;
+use Glueful\Extensions\Flags\Events\FlagDisabled;
+use Glueful\Extensions\Flags\Events\FlagEnabled;
 use Glueful\Extensions\Flags\Events\FlagRuleAdded;
 use Glueful\Extensions\Flags\Events\FlagRuleRemoved;
 use Glueful\Extensions\Flags\Events\FlagUpdated;
@@ -58,6 +60,13 @@ final class FeatureFlagManager implements FeatureFlagManagerInterface
             ['key' => $updated->key]
         );
         $this->events?->dispatch(new FlagUpdated($updated->uuid, $updated->key));
+        if ($before !== null && $before->enabled !== $updated->enabled) {
+            $this->events?->dispatch(
+                $updated->enabled
+                    ? new FlagEnabled($updated->uuid, $updated->key)
+                    : new FlagDisabled($updated->uuid, $updated->key)
+            );
+        }
 
         return $updated;
     }
