@@ -35,7 +35,6 @@ $router->group(['prefix' => '/flags', 'middleware' => ['auth']], function (Route
      *   enabled:boolean="Master switch (defaults to false)"
      *   default_value:boolean="Value returned when no rule matches (defaults to false)"
      *   status:string="Flag status: active|archived (defaults to active)"
-     *   created_by:string="Optional creator UUID"
      * @response 201 application/json "Feature flag created"
      * @response 401 "Not authenticated"
      * @response 403 "Missing flags.manage permission"

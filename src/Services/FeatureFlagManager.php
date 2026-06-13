@@ -55,9 +55,10 @@ final class FeatureFlagManager implements FeatureFlagManagerInterface
         return $this->flags->find($flag);
     }
 
-    public function create(array $data): FeatureFlag
+    public function create(array $data, ?string $actorUuid = null): FeatureFlag
     {
         $data = $this->validator->validateCreate($data);
+        $data['created_by'] = $actorUuid;
         if ($this->flags->find((string) $data['key']) !== null) {
             throw new \InvalidArgumentException(
                 sprintf('Feature flag "%s" already exists.', (string) $data['key'])
@@ -65,13 +66,13 @@ final class FeatureFlagManager implements FeatureFlagManagerInterface
         }
 
         $flag = $this->flags->create($data);
-        $this->audits->record($flag->uuid, 'created', null, $flag->toArray());
+        $this->audits->record($flag->uuid, 'created', null, $flag->toArray(), $actorUuid);
         $this->events?->dispatch(new FlagCreated($flag->uuid, $flag->key));
 
         return $flag;
     }
 
-    public function update(string $flag, array $data): FeatureFlag
+    public function update(string $flag, array $data, ?string $actorUuid = null): FeatureFlag
     {
         $before = $this->get($flag);
         if ($before === null) {
@@ -80,7 +81,7 @@ final class FeatureFlagManager implements FeatureFlagManagerInterface
 
         $updated = $this->flags->update($flag, $this->validator->validatePatch($data));
         $this->cache->clear($flag);
-        $this->audits->record($updated->uuid, 'updated', $before->toArray(), $updated->toArray());
+        $this->audits->record($updated->uuid, 'updated', $before->toArray(), $updated->toArray(), $actorUuid);
         $this->events?->dispatch(new FlagUpdated($updated->uuid, $updated->key));
         if ($before->enabled !== $updated->enabled) {
             $this->events?->dispatch(
@@ -93,7 +94,7 @@ final class FeatureFlagManager implements FeatureFlagManagerInterface
         return $updated;
     }
 
-    public function addRule(string $flag, array $rule): FeatureFlagRule
+    public function addRule(string $flag, array $rule, ?string $actorUuid = null): FeatureFlagRule
     {
         $definition = $this->flags->find($flag);
         if ($definition === null) {
@@ -102,13 +103,13 @@ final class FeatureFlagManager implements FeatureFlagManagerInterface
 
         $created = $this->flags->addRule($flag, $this->validator->validateRule($rule));
         $this->cache->clear($flag);
-        $this->audits->record($created->flagUuid, 'rule_added', null, $created->toArray());
+        $this->audits->record($created->flagUuid, 'rule_added', null, $created->toArray(), $actorUuid);
         $this->events?->dispatch(new FlagRuleAdded($created->flagUuid, $definition->key, $created->uuid));
 
         return $created;
     }
 
-    public function removeRule(string $flag, string $ruleUuid): void
+    public function removeRule(string $flag, string $ruleUuid, ?string $actorUuid = null): void
     {
         $definition = $this->flags->find($flag);
         if ($definition === null) {
@@ -123,7 +124,7 @@ final class FeatureFlagManager implements FeatureFlagManagerInterface
         $this->flags->removeRule($flag, $ruleUuid);
         $this->cache->clear($flag);
         $after = $this->flags->findRule($definition->uuid, $ruleUuid);
-        $this->audits->record($definition->uuid, 'rule_removed', $before->toArray(), $after?->toArray());
+        $this->audits->record($definition->uuid, 'rule_removed', $before->toArray(), $after?->toArray(), $actorUuid);
         $this->events?->dispatch(new FlagRuleRemoved($definition->uuid, $definition->key, $ruleUuid));
     }
 }

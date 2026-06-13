@@ -19,7 +19,11 @@ final class RequireFlagsPermission implements RouteMiddleware
 
     public function handle(Request $request, callable $next, mixed ...$params): mixed
     {
-        $permission = (string) ($params[0] ?? 'flags.view');
+        $permission = isset($params[0]) && is_string($params[0]) ? trim($params[0]) : '';
+        if ($permission === '') {
+            return $this->forbidden();
+        }
+
         $user = $request->attributes->get('auth.user');
         if (!$user instanceof UserIdentity) {
             return $this->forbidden();

@@ -4,6 +4,16 @@ All notable changes to `glueful/flags` will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [Unreleased]
+
+## [1.0.1] - 2026-06-13
+
+### Security
+
+- Record the authenticated actor UUID in feature-flag audit rows for create, update/archive, rule-add, and rule-remove operations.
+- Derive `created_by` from the authenticated actor during flag creation instead of accepting a client-supplied creator UUID.
+- Make `flags_permission` fail closed when a route omits the required permission parameter instead of defaulting to `flags.view`.
+
 ## [1.0.0] - 2026-06-11
 
 First release. **Feature flags and rollout controls** for Glueful: flag definitions with

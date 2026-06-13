@@ -20,6 +20,25 @@ final class RequireFlagsPermissionTest extends FlagsTestCase
         self::assertSame(403, $response->getStatusCode());
     }
 
+    public function testPermissionMiddlewareReturns403WithoutPermissionParameter(): void
+    {
+        $this->bind(PermissionManager::class, new FakePermissionManager(true));
+        $request = Request::create('/');
+        $request->attributes->set('auth.user', new UserIdentity('user-1'));
+        $called = false;
+
+        $response = (new RequireFlagsPermission($this->appContext()))->handle(
+            $request,
+            function () use (&$called): Response {
+                $called = true;
+                return new Response('ok', 200);
+            }
+        );
+
+        self::assertFalse($called);
+        self::assertSame(403, $response->getStatusCode());
+    }
+
     public function testPermissionMiddlewareReturns403WhenManagerUnavailable(): void
     {
         $request = Request::create('/');

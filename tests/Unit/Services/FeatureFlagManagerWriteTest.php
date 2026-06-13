@@ -47,10 +47,14 @@ final class FeatureFlagManagerWriteTest extends FlagsTestCase
 
     public function testCreateRecordsFullFlagSnapshot(): void
     {
-        $flag = $this->manager->create(['key' => 'new_editor', 'name' => 'New editor', 'enabled' => true]);
+        $flag = $this->manager->create(
+            ['key' => 'new_editor', 'name' => 'New editor', 'enabled' => true],
+            'user-1'
+        );
 
         $audit = $this->latestAudit($flag->uuid);
         self::assertSame('created', $audit['action']);
+        self::assertSame('user-1', $audit['actor_uuid']);
         self::assertNull($audit['before']);
 
         $after = $this->decode($audit['after']);
@@ -59,7 +63,15 @@ final class FeatureFlagManagerWriteTest extends FlagsTestCase
         self::assertTrue($after['enabled']);
         self::assertFalse($after['default_value']);
         self::assertSame('active', $after['status']);
+        self::assertSame('user-1', $after['created_by']);
         self::assertSame([], $after['rules']);
+    }
+
+    public function testCreateIgnoresClientSuppliedCreatedBy(): void
+    {
+        $flag = $this->manager->create(['key' => 'new_editor', 'created_by' => 'spoofed-user'], 'real-user');
+
+        self::assertSame('real-user', $flag->createdBy);
     }
 
     public function testCreateRejectsDuplicateKey(): void
@@ -73,10 +85,11 @@ final class FeatureFlagManagerWriteTest extends FlagsTestCase
     public function testUpdateRecordsFullBeforeAndAfterSnapshots(): void
     {
         $flag = $this->manager->create(['key' => 'new_editor', 'name' => 'New editor']);
-        $this->manager->update('new_editor', ['name' => 'Renamed', 'enabled' => true]);
+        $this->manager->update('new_editor', ['name' => 'Renamed', 'enabled' => true], 'user-2');
 
         $audit = $this->latestAudit($flag->uuid);
         self::assertSame('updated', $audit['action']);
+        self::assertSame('user-2', $audit['actor_uuid']);
 
         $before = $this->decode($audit['before']);
         $after = $this->decode($audit['after']);
@@ -96,10 +109,11 @@ final class FeatureFlagManagerWriteTest extends FlagsTestCase
     public function testAddRuleRecordsFullRuleSnapshot(): void
     {
         $flag = $this->manager->create(['key' => 'new_editor']);
-        $rule = $this->manager->addRule('new_editor', ['type' => 'user', 'value' => ['user-1']]);
+        $rule = $this->manager->addRule('new_editor', ['type' => 'user', 'value' => ['user-1']], 'user-3');
 
         $audit = $this->latestAudit($flag->uuid);
         self::assertSame('rule_added', $audit['action']);
+        self::assertSame('user-3', $audit['actor_uuid']);
         self::assertNull($audit['before']);
 
         $after = $this->decode($audit['after']);
@@ -122,10 +136,11 @@ final class FeatureFlagManagerWriteTest extends FlagsTestCase
         $flag = $this->manager->create(['key' => 'new_editor']);
         $rule = $this->manager->addRule('new_editor', ['type' => 'user', 'value' => ['user-1']]);
 
-        $this->manager->removeRule('new_editor', $rule->uuid);
+        $this->manager->removeRule('new_editor', $rule->uuid, 'user-4');
 
         $audit = $this->latestAudit($flag->uuid);
         self::assertSame('rule_removed', $audit['action']);
+        self::assertSame('user-4', $audit['actor_uuid']);
 
         $before = $this->decode($audit['before']);
         $after = $this->decode($audit['after']);
