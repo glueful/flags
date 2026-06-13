@@ -29,7 +29,6 @@ final class FlagPayloadValidatorTest extends TestCase
             'enabled' => true,
             'default_value' => false,
             'status' => 'active',
-            'created_by' => 'user-1',
         ]);
 
         self::assertSame('new_editor', $validated['key']);
@@ -38,7 +37,6 @@ final class FlagPayloadValidatorTest extends TestCase
         self::assertTrue($validated['enabled']);
         self::assertFalse($validated['default_value']);
         self::assertSame('active', $validated['status']);
-        self::assertSame('user-1', $validated['created_by']);
     }
 
     public function testCreateAppliesDefaults(): void
@@ -50,7 +48,17 @@ final class FlagPayloadValidatorTest extends TestCase
         self::assertFalse($validated['enabled']);
         self::assertFalse($validated['default_value']);
         self::assertSame('active', $validated['status']);
-        self::assertNull($validated['created_by']);
+        self::assertArrayNotHasKey('created_by', $validated);
+    }
+
+    public function testCreateDropsClientSuppliedCreatedBy(): void
+    {
+        $validated = $this->validator->validateCreate([
+            'key' => 'new_editor',
+            'created_by' => 'spoofed-user',
+        ]);
+
+        self::assertArrayNotHasKey('created_by', $validated);
     }
 
     public function testCreateRejectsMissingKey(): void

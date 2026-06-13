@@ -58,6 +58,7 @@ final class FeatureFlagManager implements FeatureFlagManagerInterface
     public function create(array $data, ?string $actorUuid = null): FeatureFlag
     {
         $data = $this->validator->validateCreate($data);
+        $data['created_by'] = $actorUuid;
         if ($this->flags->find((string) $data['key']) !== null) {
             throw new \InvalidArgumentException(
                 sprintf('Feature flag "%s" already exists.', (string) $data['key'])

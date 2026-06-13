@@ -9,6 +9,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ### Security
 
 - Record the authenticated actor UUID in feature-flag audit rows for create, update/archive, rule-add, and rule-remove operations.
+- Derive `created_by` from the authenticated actor during flag creation instead of accepting a client-supplied creator UUID.
 
 ## [1.0.0] - 2026-06-11
 

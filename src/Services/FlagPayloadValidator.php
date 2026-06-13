@@ -39,7 +39,6 @@ final class FlagPayloadValidator
             'enabled' => $this->validateBool($payload['enabled'] ?? false, 'enabled'),
             'default_value' => $this->validateBool($payload['default_value'] ?? false, 'default_value'),
             'status' => $this->validateStatus($payload['status'] ?? 'active'),
-            'created_by' => $this->nullableString($payload['created_by'] ?? null, 'created_by'),
         ];
     }
 

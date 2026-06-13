@@ -63,7 +63,15 @@ final class FeatureFlagManagerWriteTest extends FlagsTestCase
         self::assertTrue($after['enabled']);
         self::assertFalse($after['default_value']);
         self::assertSame('active', $after['status']);
+        self::assertSame('user-1', $after['created_by']);
         self::assertSame([], $after['rules']);
+    }
+
+    public function testCreateIgnoresClientSuppliedCreatedBy(): void
+    {
+        $flag = $this->manager->create(['key' => 'new_editor', 'created_by' => 'spoofed-user'], 'real-user');
+
+        self::assertSame('real-user', $flag->createdBy);
     }
 
     public function testCreateRejectsDuplicateKey(): void

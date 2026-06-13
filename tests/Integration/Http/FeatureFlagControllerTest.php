@@ -47,7 +47,20 @@ final class FeatureFlagControllerTest extends FlagsTestCase
 
         self::assertSame(201, $response->getStatusCode());
         self::assertSame('new_editor', $data['data']['flag']['key']);
+        self::assertSame('user-1', $this->flagRow('new_editor')['created_by']);
         self::assertSame('user-1', $this->latestAudit((string) $data['data']['flag']['uuid'])['actor_uuid']);
+    }
+
+    public function testStoreIgnoresClientSuppliedCreatedBy(): void
+    {
+        $response = $this->controller->store($this->jsonRequest('POST', '/flags', [
+            'key' => 'new_editor',
+            'created_by' => 'spoofed-user',
+        ], 'real-user'));
+        $data = $this->json($response);
+
+        self::assertSame(201, $response->getStatusCode());
+        self::assertSame('real-user', $this->flagRow('new_editor')['created_by']);
     }
 
     public function testUpdateChangesFlag(): void
@@ -227,5 +240,18 @@ final class FeatureFlagControllerTest extends FlagsTestCase
         self::assertNotEmpty($rows);
 
         return $rows[0];
+    }
+
+    /** @return array<string,mixed> */
+    private function flagRow(string $key): array
+    {
+        $row = $this->connection()
+            ->table('feature_flags')
+            ->where('key', '=', $key)
+            ->first();
+
+        self::assertIsArray($row);
+
+        return $row;
     }
 }
