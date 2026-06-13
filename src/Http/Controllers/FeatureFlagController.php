@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Glueful\Extensions\Flags\Http\Controllers;
 
+use Glueful\Auth\UserIdentity;
 use Glueful\Extensions\Flags\Exceptions\FlagNotFoundException;
 use Glueful\Extensions\Flags\Repositories\FeatureFlagRepository;
 use Glueful\Extensions\Flags\Services\FeatureFlagManager;
@@ -25,7 +26,7 @@ final class FeatureFlagController
     {
         try {
             return Response::created(
-                ['flag' => $this->manager->create($this->body($request))],
+                ['flag' => $this->manager->create($this->body($request), $this->actorUuid($request))],
                 'Feature flag created.'
             );
         } catch (\InvalidArgumentException $e) {
@@ -47,7 +48,7 @@ final class FeatureFlagController
     {
         try {
             return Response::success(
-                ['flag' => $this->manager->update($key, $this->body($request))],
+                ['flag' => $this->manager->update($key, $this->body($request), $this->actorUuid($request))],
                 'Feature flag updated.'
             );
         } catch (FlagNotFoundException) {
@@ -61,7 +62,11 @@ final class FeatureFlagController
     {
         try {
             return Response::success(
-                ['flag' => $this->manager->update($key, ['status' => 'archived', 'enabled' => false])],
+                ['flag' => $this->manager->update(
+                    $key,
+                    ['status' => 'archived', 'enabled' => false],
+                    $this->actorUuid($request)
+                )],
                 'Feature flag archived.'
             );
         } catch (FlagNotFoundException) {
@@ -75,5 +80,12 @@ final class FeatureFlagController
         $data = json_decode((string) $request->getContent(), true);
 
         return array_merge($request->request->all(), is_array($data) ? $data : []);
+    }
+
+    private function actorUuid(Request $request): ?string
+    {
+        $user = $request->attributes->get('auth.user');
+
+        return $user instanceof UserIdentity ? $user->id() : null;
     }
 }

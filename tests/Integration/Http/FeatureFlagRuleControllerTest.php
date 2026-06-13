@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Glueful\Extensions\Flags\Tests\Integration\Http;
 
+use Glueful\Auth\UserIdentity;
 use Glueful\Extensions\Flags\Http\Controllers\FeatureFlagRuleController;
 use Glueful\Extensions\Flags\Repositories\FeatureFlagAuditRepository;
 use Glueful\Extensions\Flags\Repositories\FeatureFlagRepository;
@@ -35,16 +36,17 @@ final class FeatureFlagRuleControllerTest extends FlagsTestCase
 
     public function testStoreCreatesRule(): void
     {
-        $this->manager->create(['key' => 'new_editor']);
+        $flag = $this->manager->create(['key' => 'new_editor']);
 
         $response = $this->controller->store(
-            $this->jsonRequest('POST', '/flags/new_editor/rules', ['type' => 'user', 'value' => ['user-1']]),
+            $this->jsonRequest('POST', '/flags/new_editor/rules', ['type' => 'user', 'value' => ['user-1']], 'user-1'),
             'new_editor'
         );
         $data = $this->json($response);
 
         self::assertSame(201, $response->getStatusCode());
         self::assertSame('user', $data['data']['rule']['type']);
+        self::assertSame('user-1', $this->latestAudit($flag->uuid)['actor_uuid']);
     }
 
     public function testStoreMissingTypeReturns422Envelope(): void
@@ -153,9 +155,9 @@ final class FeatureFlagRuleControllerTest extends FlagsTestCase
     }
 
     /** @param array<string,mixed> $payload */
-    private function jsonRequest(string $method, string $uri, array $payload): Request
+    private function jsonRequest(string $method, string $uri, array $payload, ?string $actorUuid = null): Request
     {
-        return Request::create(
+        $request = Request::create(
             $uri,
             $method,
             [],
@@ -164,6 +166,12 @@ final class FeatureFlagRuleControllerTest extends FlagsTestCase
             ['CONTENT_TYPE' => 'application/json'],
             json_encode($payload, JSON_THROW_ON_ERROR)
         );
+
+        if ($actorUuid !== null) {
+            $request->attributes->set('auth.user', new UserIdentity($actorUuid));
+        }
+
+        return $request;
     }
 
     /** @return array<string,mixed> */
@@ -172,5 +180,19 @@ final class FeatureFlagRuleControllerTest extends FlagsTestCase
         $decoded = json_decode((string) $response->getContent(), true);
 
         return is_array($decoded) ? $decoded : [];
+    }
+
+    /** @return array<string,mixed> */
+    private function latestAudit(string $flagUuid): array
+    {
+        $rows = $this->connection()
+            ->table('feature_flag_audits')
+            ->where('flag_uuid', '=', $flagUuid)
+            ->orderBy('id', 'DESC')
+            ->get();
+
+        self::assertNotEmpty($rows);
+
+        return $rows[0];
     }
 }

@@ -4,6 +4,12 @@ All notable changes to `glueful/flags` will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [Unreleased]
+
+### Security
+
+- Record the authenticated actor UUID in feature-flag audit rows for create, update/archive, rule-add, and rule-remove operations.
+
 ## [1.0.0] - 2026-06-11
 
 First release. **Feature flags and rollout controls** for Glueful: flag definitions with

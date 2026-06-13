@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Glueful\Extensions\Flags\Http\Controllers;
 
+use Glueful\Auth\UserIdentity;
 use Glueful\Extensions\Flags\Exceptions\FlagNotFoundException;
 use Glueful\Extensions\Flags\Exceptions\RuleNotFoundException;
 use Glueful\Extensions\Flags\Services\FeatureFlagManager;
@@ -20,7 +21,7 @@ final class FeatureFlagRuleController
     {
         try {
             return Response::created(
-                ['rule' => $this->manager->addRule($key, $this->body($request))],
+                ['rule' => $this->manager->addRule($key, $this->body($request), $this->actorUuid($request))],
                 'Flag rule created.'
             );
         } catch (FlagNotFoundException) {
@@ -33,7 +34,7 @@ final class FeatureFlagRuleController
     public function delete(Request $request, string $key, string $uuid): Response
     {
         try {
-            $this->manager->removeRule($key, $uuid);
+            $this->manager->removeRule($key, $uuid, $this->actorUuid($request));
         } catch (FlagNotFoundException) {
             return Response::notFound('Feature flag not found.');
         } catch (RuleNotFoundException) {
@@ -49,5 +50,12 @@ final class FeatureFlagRuleController
         $data = json_decode((string) $request->getContent(), true);
 
         return array_merge($request->request->all(), is_array($data) ? $data : []);
+    }
+
+    private function actorUuid(Request $request): ?string
+    {
+        $user = $request->attributes->get('auth.user');
+
+        return $user instanceof UserIdentity ? $user->id() : null;
     }
 }
