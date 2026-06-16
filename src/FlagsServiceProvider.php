@@ -134,11 +134,11 @@ final class FlagsServiceProvider extends ServiceProvider
     public function register(ApplicationContext $context): void
     {
         $this->mergeConfig('flags', require __DIR__ . '/../config/flags.php');
-        $this->loadMigrationsFrom(__DIR__ . '/../migrations', MigrationPriority::DEFAULT, 'glueful/flags');
     }
 
     public function boot(ApplicationContext $context): void
     {
+        $this->loadMigrationsFrom(__DIR__ . '/../migrations', MigrationPriority::DEFAULT, 'glueful/flags');
         $this->discoverCommands('Glueful\\Extensions\\Flags\\Console', __DIR__ . '/Console');
         if ((bool) \config($context, 'flags.routes_enabled', true)) {
             $this->loadRoutesFrom(__DIR__ . '/../routes/routes.php');
