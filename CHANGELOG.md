@@ -6,6 +6,19 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-06-25
+
+### Fixed
+
+- **`flags_permission`-gated routes no longer fail closed (403) for authenticated users when the
+  `auth.user` enricher isn't registered.** `RequireFlagsPermission` read only the `auth.user`
+  `UserIdentity` request attribute, which is populated solely by the **optional**
+  `AuthToRequestAttributesMiddleware` enricher — apps like the api-skeleton / Lemma don't register it.
+  `AuthMiddleware` always sets the plain `'user'` array attribute, so the middleware now falls back to it
+  (uuid + roles/scopes), matching how every other permission gate resolves the principal. Without this,
+  the entire flags management API (`flags.view` / `flags.manage` / `flags.evaluate`) returned 403 to
+  fully authenticated admins on those deployments. No new env, no migrations.
+
 ## [1.1.1] - 2026-06-16
 
 ### Fixed
