@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Glueful\Extensions\Flags;
 
 use Glueful\Bootstrap\ApplicationContext;
-use Glueful\Database\Migrations\MigrationPriority;
 use Glueful\Events\EventService;
 use Glueful\Extensions\Flags\Console\FlagArchiveCommand;
 use Glueful\Extensions\Flags\Console\FlagDisableCommand;
@@ -138,7 +137,6 @@ final class FlagsServiceProvider extends ServiceProvider
 
     public function boot(ApplicationContext $context): void
     {
-        $this->loadMigrationsFrom(__DIR__ . '/../migrations', MigrationPriority::DEFAULT, 'glueful/flags');
         $this->discoverCommands('Glueful\\Extensions\\Flags\\Console', __DIR__ . '/Console');
         if ((bool) \config($context, 'flags.routes_enabled', true)) {
             $this->loadRoutesFrom(__DIR__ . '/../routes/routes.php');

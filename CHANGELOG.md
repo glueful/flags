@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
+### Added
+- Declares the Glueful schema manifest (migration descriptors, requires.extensions, structural
+  verifier); requires framework >=1.79.0 for schema-on-enable participation. Migrations are now
+  registered by the manifest, not by provider boot.
+
 ## [1.1.2] - 2026-06-25
 
 ### Fixed
